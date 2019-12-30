@@ -1,0 +1,5 @@
+classes= 1 
+train  = scripts/train.txt  
+valid  = scripts/test.txt  
+names = cfg/nfpa.names  
+backup = backup

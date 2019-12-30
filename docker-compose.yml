@@ -1,0 +1,20 @@
+version: '3.1'
+
+services:
+
+  yolo:
+    build: 
+      context: .
+
+    restart: unless-stopped
+    ports:
+      - 8778:8888
+    environment:
+      DISPLAY: :0
+    volumes:
+      - ./:/home/jovyan
+      - darknet:/home/jovyan/darknet-master
+      - /tmp/.X11-unix:/tmp/.X11-unix 
+
+volumes:
+  darknet:
