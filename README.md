@@ -67,10 +67,23 @@ For each image there needs to be `.txt` file, with the same filename, which labe
 
 To achieve this I used https://github.com/tzutalin/labelImg
 
+
+xhost +local:docker
+
+docker run --rm -it -e DISPLAY=unix$DISPLAY --workdir=/home -v "${PWD}:/home" -v /tmp/.X11-unix:/tmp/.X11-unix tzutalin/py2qt4
+
+python labelImg.py
+
+
 At the end of this you should have two folders containing:
 
  - images of counters (e.g. 000001.jpg, 000002.jpg, ...)
  - annotations of the digits (e.g 000001.txt, 000002.txt, ...)
+
+
+
+
+
 
 To view the results of the data you can run
 
