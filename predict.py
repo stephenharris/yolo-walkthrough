@@ -1,10 +1,14 @@
 import sys
+import os
 import subprocess
 import json
 from pandas import *
 from util.yolo import *
-
+import hashlib 
+  
 def predict(file):
+
+    result_file = hashlib.md5(file.encode()).hexdigest() + ".result.json" 
 
     subprocess.check_output([
         './darknet-alex/darknet',
@@ -15,12 +19,12 @@ def predict(file):
         'weights/counters-yolov3-tiny-b633ebb_best.weights',
         file,
         '-ext_output',
-        #'-dont_show',
+        '-dont_show',
         '-out',
-        'result.json'
+        result_file
     ])
 
-    with open('result.json') as json_file:
+    with open(result_file) as json_file:
         data = json.load(json_file)
         predictions = list(map(lambda o: Prediction(
             o['name'], 
@@ -35,6 +39,8 @@ def predict(file):
 
         # sort from left to right
         predictions.sort(key=lambda prediction: prediction.leftx)
+
+        os.remove(result_file)
 
         # output classes
         return ("".join(map(lambda prediction: str(prediction.class_), predictions)))
