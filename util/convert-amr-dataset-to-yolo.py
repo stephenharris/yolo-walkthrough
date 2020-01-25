@@ -21,7 +21,7 @@ def convertToYolo(folder):
         f = open(filename, "r")
 
         contents = list(map(lambda x: x.strip(), f.read().splitlines()))
-        print("process " + filename)
+        
         data = {
             "reading": None,
             "counterPosition": None,
