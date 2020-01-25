@@ -94,7 +94,7 @@ def convertToYolo(folder):
                 )
             ))
 
-        text_file = open(base + ".txt", "w")
+        text_file = open(base + ".yolo.txt", "w")
         text_file.write("\n".join(yoloFormat))
         text_file.close()
 
