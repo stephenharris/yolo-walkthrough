@@ -87,8 +87,8 @@ def convertToYolo(folder):
             yoloFormat.append(" ".join(
                 (
                 str(value),
-                str(position[0]/data["imageWidth"]), # x/width
-                str(position[1]/data["imageHeight"]), # y/height
+                str((position[0] + (position[2]/2))/data["imageWidth"]), # x_centre/width
+                str((position[1] + (position[3]/2))/data["imageHeight"]), # y_centre/height
                 str(position[2]/data["imageWidth"]), # boundingBoxWidth/width
                 str(position[3]/data["imageHeight"]), # boundingBoxHeight/height
                 )
@@ -108,13 +108,16 @@ def convertToYolo(folder):
             croppedWidth = data["counterPosition"][2]
             croppedHeight = data["counterPosition"][3]
 
+            relativeWidth=position[2]/croppedWidth
+            relativeHeight=position[3]/croppedHeight
+
             yoloFormatCropped.append(" ".join(
                 (
                 str(value),
-                str((position[0]-croppedX)/croppedWidth), # x/width
-                str((position[1]-croppedY)/croppedHeight), # y/height
-                str(position[2]/croppedWidth), # boundingBoxWidth/width
-                str(position[3]/croppedWidth), # boundingBoxHeight/height
+                str(max(0,min((position[0] - croppedX + (position[2]/2))/croppedWidth, 1))), # x_centre/width
+                str(max(0,min((position[1] - croppedY + (position[3]/2))/croppedHeight, 1))), # x_centre/width
+                str(min(relativeWidth, 1)), # boundingBoxWidth/width
+                str(min(relativeHeight, 1)), # boundingBoxHeight/height
                 )
             ))
 
