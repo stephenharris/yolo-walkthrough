@@ -94,7 +94,7 @@ def convertToYolo(folder):
                 )
             ))
 
-        text_file = open(base + ".yolo", "w")
+        text_file = open(base + ".txt", "w")
         text_file.write("\n".join(yoloFormat))
         text_file.close()
 
@@ -121,7 +121,7 @@ def convertToYolo(folder):
                 )
             ))
 
-        text_file = open(base + ".cropped.yolo", "w")
+        text_file = open(base + "-cropped.txt", "w")
         text_file.write("\n".join(yoloFormatCropped))
         text_file.close()
 
