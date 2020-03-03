@@ -1,0 +1,203 @@
+<html>
+
+<header><title>Demo of automatically extracting readings from an image</title></header>
+<style>
+body {
+    color:#333;
+    font-size: 18px;
+    line-height: 1.5;
+    font-family: Arial, Helvetica, sans-serif;
+    background:#ececec;
+    display: flex;
+    justify-content: center;
+    height:100%;
+    margin:0;
+    padding:0;
+}
+form{
+    min-width: 50%;
+    max-width: 600px;
+    background:white;
+    padding: 20px;
+    box-shadow: 0px 0px 5px rgba(0,0,0,.2);
+    margin:auto;
+}
+input {
+    display:block;
+    font-size: 1em;
+}
+.row {
+    margin-top: 1em;
+}
+input[type=submit] {
+   -webkit-border-radius: 4px;
+   -moz-border-radius: 4px;
+   border-radius: 4px;
+   color: #FDFDFD;
+   font-family: Open Sans;
+   font-size: 18px;
+   font-weight: 600;
+   padding: 9px 18px;
+   background-color: #2874DE;
+   border: solid #0D51AF 1px;
+   text-decoration: none;
+   display: inline-block;
+   cursor: pointer;
+   text-align: center;
+}
+input[type=submit]:disabled {
+    border: none;
+    background:HSL(214.9, 17.4%, 40.4%);
+    cursor: default;
+}
+label {
+    font-weight:bold;
+}
+#preview {
+    margin-top: 1em;
+    width: 100%;
+    border: 1px solid #2874de;
+}
+.examples {
+    max-width: 300px;
+    margin-bottom: 10px;
+}
+</style>
+<body>
+
+    <form onsubmit="submitForm(event)">
+
+        <div>
+            <p>Example images</p>
+            <img class="examples" src="000069-cropped.jpg"/>
+            <img class="examples" src="000359-cropped.jpg"/>
+        </div>
+        <div class="row"> 
+            <label for="reading"> Meter reading (ground truth)</label>
+            <input type="number" id="reading"/>        
+        </div>
+        <div class="row">
+            <label for="evidence">Meter image (cropped to the counter)</label>
+            <input type="file" onchange="showImage(event)" id="evidence"/>
+            <img id="previewx" src=""/>
+            <canvas id="preview"></canvas>
+            <p id="prediction"></p>
+        </div>
+        <div class="row">
+            <input type="submit" id="submit" value="Submit">
+        </div>
+    </form>
+</body>
+<script>
+
+    function showImage(event) {
+        var input = event.target;
+        document.getElementById("prediction").innerText = ''
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+    
+            reader.onload = function(e) {
+                canvas = document.getElementById('preview');//.src = e.target.result;
+                canvas.style.width ='100%';
+                canvas.width  = canvas.offsetWidth;
+
+                ctx = canvas.getContext("2d");
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                var background = new Image();
+                background.src = e.target.result;
+
+                // Make sure the image is loaded first otherwise nothing will draw.
+                background.onload = function(){
+
+                    var width = background.naturalWidth,
+                    height = background.naturalHeight;
+                    canvas.width = width;
+                    canvas.height = height * (canvas.width/width);
+                    ctx.drawImage(background,0,0);
+                }
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function annotatePredictions(predictions) {
+
+        canvas = document.getElementById('preview');//.src = e.target.result;
+        ctx = canvas.getContext("2d")
+        
+        colours = [
+            '#0075DC',
+            '#990000',
+            '#005C31',
+            '#4C005C',
+            '#808080',
+            '#C20088',
+            '#FFA405',
+            '#9DCC00',
+            '#F0A3FF',
+            '#740AFF'
+        ]
+
+        for (i=0; i < predictions.length; i++) {
+            // bounding box
+            ctx.strokeStyle = colours[predictions[i][0]]
+            ctx.lineWidth = 5;
+            ctx.strokeRect(predictions[i][2], predictions[i][3], predictions[i][4], predictions[i][5]);
+            
+            // label background
+            ctx.fillStyle = colours[predictions[i][0]];
+            ctx.fillRect(predictions[i][2], predictions[i][3]- 20, 20, 20);
+            
+            // label text
+            ctx.font = "20px Arial";
+            ctx.fillStyle = "#ffffff";
+            ctx.fillText(predictions[i][0], predictions[i][2] + 5, predictions[i][3] - 2);
+        }
+    }
+
+    function submitForm(e){
+        e.preventDefault();
+        e.stopPropagation() 
+
+        var file = document.getElementById("evidence").files[0]
+        var submit = document.getElementById("submit");
+        var reading = document.getElementById("reading").value
+        var prediction = document.getElementById("prediction");
+        var reader = new FileReader();
+        
+        if(submit.disabled) {
+            return;
+        }
+        submit.disabled = true;
+        prediction.innerText = '';
+        
+        reader.onloadend = function(){
+            data = {
+                "reading": reading,
+                "evidence": btoa(reader.result)
+            }
+
+            fetch('https://aqjt2al8yj.execute-api.eu-west-1.amazonaws.com/staging/resource', {
+              method: 'POST', // or 'PUT'
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(data),
+            })
+            .then((response) => response.json())
+            .then((data) => {
+                submit.disabled = false
+                annotatePredictions(data['detections'])
+                prediction.innerText = "Predicted reading: " + data['predictedReading'];
+            })
+            .catch((error) => {
+                submit.disabled = false
+                console.error('Error:', error);
+            });
+        }
+        reader.readAsBinaryString(file)
+    }        
+</script>
+</html>
