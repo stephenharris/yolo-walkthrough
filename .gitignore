@@ -8,3 +8,4 @@ _results_data
 __pycache__
 labelImg
 results
+/terraform/*.zip

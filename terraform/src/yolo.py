@@ -1,33 +1,53 @@
 from __future__ import print_function, generators
 
-import urllib
 import os
 import subprocess
 import boto3
-
+import base64
+from datetime import datetime
+import hashlib 
 import json
 from tools import *
 from darknet import *
 
 DATA_SOURCE_BUCKET = 'yolo-amr-inference-data-source'
 
-def downloadFromS3(strBucket,strKey,strFile):
-    print("downloading " + strBucket + "/" + strKey + " to " + strFile)
+def uploadToS3(file, strBucket,strKey):
+    print("uploading to " + strBucket + "/" + strKey)
     s3_client = boto3.client('s3')
-    s3_client.download_file(strBucket, strKey, strFile)
+    s3_client.upload_fileobj(file, strBucket, strKey)
 
-
+def convertToString(predictions):
+    string_predictions = list(map(lambda prediction:
+        prediction.class_
+        + " " + str(prediction.leftx + (prediction.width/2))
+        + " " + str(prediction.topy + (prediction.height/2))
+        + " " + str(prediction.width)
+        + " " + str(prediction.height)
+        + " " + str(prediction.confidence)
+    , predictions))
+    return "\n".join(string_predictions)
+        
 def handler(event, context):
     try:
         payload = json.loads(event['body'])
+        imgdata = base64.b64decode(payload['evidence'])
+        reading = payload['reading']
+        hashValue = hashlib.md5(payload['evidence'].encode()).hexdigest()
+        name = datetime.today().strftime('%Y-%m-%d-') + reading + "-" + hashValue
         
-        localImgFilepath = '/tmp/image.jpg'
+        with open('/tmp/evidence.jpg', 'wb') as f:
+            f.write(imgdata)
 
-        downloadFromS3(DATA_SOURCE_BUCKET, payload['s3key'], localImgFilepath)
+        # Upload image to S3
+        s3 = boto3.resource('s3')
+        obj = s3.Object(DATA_SOURCE_BUCKET, name + '.jpg')
+        obj.put(Body=imgdata)
+
         try:
-            results = performDetect(localImgFilepath, 0.25, "./cfg/counters-yolov3-tiny.cfg", "weights/counters-yolov3-tiny-b633ebb_best.weights", "./cfg/counters.data", False, False, False)
+            results = performDetect('/tmp/evidence.jpg', 0.25, "./cfg/counters-yolov3-tiny.cfg", "weights/counters-yolov3-tiny-b633ebb_best.weights", "./cfg/counters.data", False, False, False)
             
-            predictions = list(map(lambda o: Prediction(
+            originalPredictions = list(map(lambda o: Prediction(
                 o[0].decode('utf-8'), 
                 o[1],
                 o[2][0] - o[2][2]/2,
@@ -36,15 +56,16 @@ def handler(event, context):
                 o[2][3]
             ), results)) 
         
-            predictions = non_maximal_supression(predictions, projected_overlap_coefficient, .15) 
-            #predictions = predictions[:5] # take top 5 (ordered by confidence)
+            predictions = non_maximal_suppression(originalPredictions, projected_overlap_coefficient, .15) 
+            predictions = predictions[:len(reading)] # take top 5 (ordered by confidence)
         
             # sort from left to right
             predictions.sort(key=lambda prediction: prediction.leftx)
             predictedReading = str(("".join(map(lambda prediction: str(prediction.class_), predictions))))
             
-            print(predictions)
-            print(predictedReading)
+            # Upload detections to S3
+            obj = s3.Object(DATA_SOURCE_BUCKET, name + '.txt')
+            obj.put(Body=convertToString(originalPredictions))
             
             return response({
                 'detections': predictions,
@@ -65,7 +86,9 @@ def handler(event, context):
 def response(data, statusCode = 200):
     response = {
         "statusCode": statusCode,
-        "headers": {},
+        "headers": {
+            "Access-Control-Allow-Origin": "*"
+        },
         "body": json.dumps(data)
     }
     return response
