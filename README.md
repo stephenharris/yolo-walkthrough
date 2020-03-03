@@ -1,5 +1,6 @@
 # Yolo
 
+
 ## Local set-up
 
 On the local machine run
@@ -10,7 +11,7 @@ On the local machine run
 
 Then, to test, on the running container
 
-    cd darknet-master
+    cd darknet
     ./darknet
 
 You should get the output:
@@ -34,15 +35,9 @@ Download some weights:
     mkdir weights
     wget -O weights/yolov3.weights https://pjreddie.com/media/files/yolov3.weights
 
-Then, in `/home/jovyan/darknet-master`
+Then, in `/home/jovyan/darknet`
 
     ./darknet detect cfg/yolov3.cfg ../weights/yolov3.weights data/dog.jpg
-
-or for the NFPA trained weights
-
-    ./darknet detect ../cfg/nfpa-yolov3-tiny.cfg ../weights/nfpa-yolov3-tiny_2900.weights ../test-data/nfpa.jpeg
-
-(**Note:** The object is labelled as 'person', because the names of the objects are taken from `darknet-master/cfg/data/coco.names` - edit that file to get the appropraite names
 
 ## Project walkthrough
 
@@ -81,10 +76,6 @@ At the end of this you should have two folders containing:
  - annotations of the digits (e.g 000001.txt, 000002.txt, ...)
 
 
-
-
-
-
 To view the results of the data you can run
 
     python digit-frequency.py /path/to/anotations/
@@ -100,8 +91,18 @@ Most of this applies when you're running it locally or on some other cloud servi
 
 #### Pre-requisite set up
 
-Create a EC2 instance (a `P3` instance seems ideal, but for this I used `c5.x2large` instance).
-If using GPU you'll probably want an image with CUDA already installed.
+See `terraform`. This creates:
+
+ - EC2 instance (`p2.xlarge`, with CUDA installed)
+ - 2 S3 buckets to store training data, initial weights and configs
+
+Additionally for deploying our trained model
+
+ - 1 S3 bucket to use a source for inference 
+ - Lambda which runs our inference
+ - API Gateway which provides an API interface for the lambda
+
+(and all the necessary security groups / policies etc)
 
 1. ssh into the instance and install depedencies 
 
@@ -111,7 +112,7 @@ If using GPU you'll probably want an image with CUDA already installed.
 
     git clone https://github.com/pjreddie/darknet.git
 
-Next edit `Makefile`. Set `GPU=1` and `CUDNN=1` if using GPU (and using CUDO). Set `OPENCV=1` and `OPENMP=1` (if you're running this on multiple cores).
+Next edit `Makefile`. Set `GPU=1` and `CUDNN=1` if using GPU (and using CUDO). Set `OPENCV=1` and `OPENMP=1` (if you're running this on multiple cores). To create an `so` library, set `LIBSO=1`.
 
     cd darknet && make
 
@@ -152,7 +153,7 @@ For example, with `classes =10`, `filters` is set to 45.
 
 4. Create weights output directory
 
-5. Uplodate (and edit) the data file (`cfg/counters.data`)
+5. Update (and edit) the data file (`cfg/counters.data`)
 
     classes= 10
     train  = /path/to/train.txt  
@@ -162,20 +163,13 @@ For example, with `classes =10`, `filters` is set to 45.
 
 `classes` is the number of classes you'll be detecting. `train`, `valid` and `names` are the paths to the files uploaded in (2) and (3). `backup` is the path to the directory we created in (4).
 
-6. Download convolution weights
+6. Generate anchors for your training data
 
-    wget https://pjreddie.com/media/files/darknet53.conv.74
+    ./darknet detector calc_anchors ./cfg/counter.data -num_of_clusters 6 -width 416 -height 416
 
-7. Create a log file
+7. Transfer learning from the UFPR dataset
 
-    touch /var/log/darknet.counters.log && chmo u+rw /var/log/darknet.counters.log
-
-
-Optional step: By default weights are created every 100 iterations, until 1000, where about they are done every 10,000 iterations. You can change this behaviour in `train_detector` (`examples/detector.c`) by editing this line (see https://github.com/pjreddie/darknet/issues/190):
-
-    if(i%10000==0 || (i < 1000 && i%100 == 0))
-
-Then re-compile
+    ./darknet partial cfg/counter-yolov3-tiny.cfg pretrained/counter-yolov3-tiny_best.weights pretrained/counter-ufpr.conv.11
 
 #### Running the training
 
@@ -205,3 +199,4 @@ or
 - https://towardsdatascience.com/tutorial-build-an-object-detection-system-using-yolo-9a930513643a
 
 - possible alternative strategy: use ocr on extracted counter
+
