@@ -13,12 +13,14 @@ def rename(folder, start = 1):
     folder = folder.rstrip('/') + '/'
     start = int(start)
 
-    imageList = glob.glob(os.path.join(folder, '*.[jJ][pP][gG]'))
-    
+    imageList = []
+    for ext in ('*.jpg', '*.jpeg', '*.JPEG', '*.JPG'):
+       imageList.extend(glob.glob(os.path.join(folder, ext)))
+
     if len(imageList) == 0:
         print ('No .JPG images found in the specified dir!')
         return
-
+    
     for (i, f) in enumerate(imageList):
         newFileName = folder + ('{0:06d}'.format(i + start)) + ".jpg"
         os.rename(f,newFileName)
