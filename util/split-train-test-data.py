@@ -7,6 +7,8 @@ import os
 import glob
 import sys
 import random
+import pandas as pd
+import numpy as np
 
 def splitTrainTestData(folder, seed):
     
@@ -14,31 +16,53 @@ def splitTrainTestData(folder, seed):
 
     folder = folder.rstrip('/') + '/'
     
-    imageList = glob.glob(os.path.join(folder, '*.jpg'))
+    nonDigitalImageList = glob.glob(os.path.join(folder, '*[!d].jpg'))
+    digitalImageList = glob.glob(os.path.join(folder, '*d.jpg'))
 
-    data_size = len(imageList)
-
-    if data_size == 0:
-        print ('No .JPG images found in the specified dir!')
-        return
+    strataImages = [
+       nonDigitalImageList, digitalImageList 
+    ]
 
     # Create and/or truncate train.txt and test.txt
-    file_train = open('train.txt', 'w+')  
-    file_test = open('test.txt', 'w+')
+    #file_train = open('train.txt', 'w+')  
+    #file_test = open('test.txt', 'w+')
 
-    counter = 0
-    data_test_size = int(0.1 * data_size)
-    test_array = random.sample(range(data_size), k=data_test_size)
+    if not os.path.exists(folder + 'training'):
+        os.mkdir(folder + 'training')
+
+    if not os.path.exists(folder + 'validation'):
+        os.mkdir(folder + 'validation')
+
+    if not os.path.exists(folder + 'testing'):
+        os.mkdir(folder + 'testing')
+
+    for imageList in strataImages:
+
+        data_size = len(imageList)
+        counter = 0
     
-    for f in imageList:
-        counter += 1
+        df = pd.DataFrame(imageList)
+        train, validate, test = np.split(df.sample(frac=1, random_state=seed), [int(.6*len(df)), int(.8*len(df))])
+
+        print("{0} for training, {1} for validation, {2} for testing".format(len(train), len(validate), len(test)))
+
+        for f in train.values:
+            basename = os.path.basename(f[0])
+            (file, ext) = os.path.splitext(basename)
+            os.rename(f[0],folder + '/training/' + basename)
+            os.rename(folder + file + '.txt', folder + 'training/' + file + '.txt')
         
-        if counter in test_array:
-            file_test.write(f + "\n")
-        else:
-            file_train.write(f + "\n")
-                
-    return
+        for f in validate.values:
+            basename = os.path.basename(f[0])
+            (file, ext) = os.path.splitext(basename)
+            os.rename(f[0],folder + '/validation/' + basename)
+            os.rename(folder + file + '.txt', folder + 'validation/' + file + '.txt')
+
+        for f in test.values:
+            basename = os.path.basename(f[0])
+            (file, ext) = os.path.splitext(basename)
+            os.rename(f[0],folder + '/testing/' + basename)
+            os.rename(folder + file + '.txt', folder + 'testing/' + file + '.txt')
     
 if __name__ == '__main__':
     folder = ''
