@@ -1,5 +1,0 @@
-classes= 1 
-train  = ../util/train.txt  
-valid  = ../util/test.txt  
-names = ../cfg/nfpa.names  
-backup = backup
