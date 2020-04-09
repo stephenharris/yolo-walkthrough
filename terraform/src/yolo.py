@@ -34,7 +34,7 @@ def handler(event, context):
         imgdata = base64.b64decode(payload['evidence'])
         reading = payload['reading']
         hashValue = hashlib.md5(payload['evidence'].encode()).hexdigest()
-        name = datetime.today().strftime('%Y/%m/%d-') + reading + "-" + hashValue
+        name = datetime.today().strftime('%Y/%m/%d-digits-') + reading + "-" + hashValue
         
         with open('/tmp/evidence.jpg', 'wb') as f:
             f.write(imgdata)
