@@ -45,7 +45,7 @@ def handler(event, context):
         obj.put(Body=imgdata)
 
         try:
-            results = performDetect('/tmp/evidence.jpg', 0.25, "./cfg/spark-digits-yolov3-tiny", "weights/spark-digits-yolov3-tiny_best", "./cfg/digits.data", False, False, False)
+            results = performDetect('/tmp/evidence.jpg', 0.25, "./cfg/spark-digits-yolov3-tiny.cfg", "weights/spark-digits-yolov3-tiny_best", "./cfg/digits.data", False, False, False)
             
             originalPredictions = list(map(lambda o: Prediction(
                 o[0].decode('utf-8'), 
