@@ -1,15 +1,19 @@
 from __future__ import generators
 import glob
 import sys
-from darknet import *
+from yolo_lib.darknet import *
 from yolo_lib.non_maximal_suppression import *
 from collections import namedtuple
 from yolo_lib.annotation import *
+from PIL import Image
+from yolo_lib.non_maximal_suppression import *
+from yolo_lib.annotation import *
+import PIL
 
 #Prediction = namedtuple('Prediction', 'class_, confidence, leftx, topy, width height')
 
 def get_reading(filename):
-    annotations = YoloAnnotation.create_from_file(filename)
+    annotations = Annotation.create_from_file(filename)
     # todo we sort by centreX here but leftX in prediction
     annotations.sort(key=lambda annotation: annotation.centreX)
     return ("".join(map(lambda annotation: str(annotation.className), annotations)))
@@ -23,10 +27,10 @@ if __name__ == '__main__':
 
     folder = sys.argv[1]
     folder = folder.rstrip('/') + '/'
-    images = glob.glob( "ufpramir/cropped/testing/*.jpg")
+    images = glob.glob( folder + "*.jpg")
 
-    images = images[:10]
-    results_file = open("tmp-results-poc-proj-0-15-best-weights.txt", "w")
+    #images = images[:10]
+    results_file = open("tmp-spark-digits-results-poc-proj-0-15-best-weights.txt", "w")
 
     matches = 0
     total = 0
@@ -38,7 +42,7 @@ if __name__ == '__main__':
 
         actual = get_reading(ground_truth)
 
-        results = performDetect(filename, 0.25, "./cfg/counters-yolov3-tiny.cfg", "weights/counters-yolov3-tiny-b633ebb_best.weights", "./cfg/counters.data", False, False, False)
+        results = performDetect(filename, 0.25, "./cfg/spark-digits-yolov3-tiny.cfg", "weights/spark-digits-yolov3-tiny_best.weights", "./cfg/spark-digits.data", False, False, False)
         
         predictions = list(map(lambda o: Prediction(
             o[0].decode('utf-8'), 
@@ -50,7 +54,7 @@ if __name__ == '__main__':
         ), results)) 
 
         predictions = non_maximal_suppression(predictions, projected_overlap_coefficient, .15) 
-        predictions = predictions[:5] # take top 5 (ordered by confidence) TODO extend to variable coutner sizes
+        predictions = predictions[:len(actual)] # take top 5 (ordered by confidence) TODO extend to variable coutner sizes
     
         # sort from left to right
         predictions.sort(key=lambda prediction: prediction.leftx)
