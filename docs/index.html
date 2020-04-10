@@ -189,7 +189,7 @@ label {
             .then((response) => response.json())
             .then((data) => {
                 submit.disabled = false
-                annotatePredictions(data['detections'])
+                annotatePredictions(data['digits'])
                 prediction.innerText = "Predicted reading: " + data['predictedReading'];
             })
             .catch((error) => {
