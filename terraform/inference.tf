@@ -22,7 +22,7 @@ resource "aws_iam_policy" "inference_lambda_policy" {
   name = "yoloAMRPolicy"
   description = "Allows access to logs and data source S3 bucket"
   policy = templatefile("./inference_lambda_policy.json", {
-    sourcebucket= aws_s3_bucket.inference_source.id
+    sourcebucket = aws_s3_bucket.inference_source.id
   })
 }
 
@@ -99,6 +99,21 @@ resource "aws_s3_bucket" "inference_source" {
   versioning {
     enabled = false
   }
+}
+
+resource "aws_s3_bucket_object" "upload_digits_weights" {
+  bucket = aws_s3_bucket.inference_source.bucket
+  key = "spark-digits-yolov3-tiny_best.weights"
+  source = "spark-digits-yolov3-tiny_best.weights"
+  etag = filemd5("spark-digits-yolov3-tiny_best.weights")
+}
+
+
+resource "aws_s3_bucket_object" "upload_counter_weights" {
+  bucket = aws_s3_bucket.inference_source.bucket
+  key = "spark-counter-yolov3-tiny_best.weights"
+  source = "spark-counter-yolov3-tiny_best.weights"
+  etag = filemd5("spark-counter-yolov3-tiny_best.weights")
 }
 
 module "inference_gateway_api_cors" {
