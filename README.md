@@ -178,7 +178,6 @@ or
 If you EC2 instance is public then you'll be able to view a graph of the training on port `8090`.
 
 
-
 ### Training digit recognition (on AWS EC2)
 
 The process for training digit recongition is essentially identical to the above, but for changes in configuration process.
@@ -193,10 +192,27 @@ Either locally in your container or on the EC2 instance run
 
 This will find any images in the folder and apply the model (you may need to change the arugments passed to `performDetect`). It will then generate the following images:
 
- - `{filename}-prediction.jpg` - the meter image with a bounding box drawn around the predicted counter region
+ - `{filename}-prediction.jpg` - the meter image with a bounding box drawn around the predicted counter region (incase of multiple predictions, the one with the highest confidence score is shown)
+ - `{filename}-scaled-crop.jpg` - bounding box is scaled up by 20% and the image cropped to that region
+
+The second file forms the dataset for digit recognition training. 
 
 
+#### Configuration
 
+Configuration follows as before, with the following changes:
+
+ - Add `flip=0` in your config file (`cfg/spark-digits-yolov3-tiny.cfg`) at the top above `learning_rate`. This is to prevent the software from flipping the image while performing data augmentation - this is clearly not suitable when training for digit recognition).
+
+ - Set `classes` to 10
+
+ - Set `filters` on line 128 and 172 to 45 
+
+ - Create names file listing digits 0-9 (see `cfg/spark-digits.names`)
+
+ - Set `classes` to 10 in data file and update path to files listed (see `cfg/spark-digits.data`).
+
+ - Generate a new set of anchors for your new data set
 
 
 ## Resources
