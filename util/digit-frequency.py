@@ -22,7 +22,8 @@ def digitFrequency(folder):
         4: {0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0},
         5: {0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0},
         6: {0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0},
-        7: {0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0}
+        7: {0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0},
+        8: {0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0}
     }
 
     folder = folder.rstrip('/') + '/'
@@ -62,23 +63,23 @@ def digitFrequency(folder):
     bottom = np.array([0,0,0,0,0,0,0,0,0,0])
 
     # colors for each position 1-6
-    colors = [None, '#003f5c', '#444e86', '#955196', '#dd5182', '#ff6e54', '#ffa600', '#fffe26']
+    colors = [None, '#003f5c', '#444e86', '#955196', '#dd5182', '#ff6e54', '#ffa600', '#fffe26', '#ff3726']
 
     # reverse position frequency so 1st digit is on top
     reversedPositionFrequency = OrderedDict(sorted(positionalFrequency.items(), reverse=True))
+
     for position, frequencies in reversedPositionFrequency.items():
 
         plt.bar(np.arange(10), frequencies.values(), .7, bottom=bottom, color=colors[position])
         bottom += list(frequencies.values())
 
-    ax.legend(labels=['7th digit', '6th digit', '5th digit', '4th digit', '3rd digit', '2nd digit', '1st digit'])
+    ax.legend(labels=['8th digit', '7th digit', '6th digit', '5th digit', '4th digit', '3rd digit', '2nd digit', '1st digit'])
     plt.show()
 
 
 
 if __name__ == '__main__':
     folder = ''
-
     if len(sys.argv) == 2:
         folder = sys.argv[1]
     else:
