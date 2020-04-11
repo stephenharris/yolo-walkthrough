@@ -66,15 +66,6 @@ if __name__ == '__main__':
         im = Image.open(filename)
         width, height = im.size
         
-        ratio = 1
-        croppedImage = im.crop((
-            prediction.leftx - (prediction.width * (ratio -1)),
-            prediction.topy - (prediction.height * (ratio-1)),
-            prediction.leftx + prediction.width * ratio,
-            prediction.topy + prediction.height * ratio
-        ))
-        croppedImage.save(output + base + "-cropped.jpg")
-
         ratio = 1.2
         croppedImage = im.crop((
             prediction.leftx - (prediction.width * (ratio -1)),
