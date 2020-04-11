@@ -39,8 +39,9 @@ if __name__ == '__main__':
 
         actual = get_reading(ground_truth)
 
-        results = performDetect(filename, 0.25, "./cfg/spark-digits-yolov3-tiny.cfg", "weights/spark-digits-yolov3-tiny_best.weights", "./cfg/spark-digits.data", False, False, False)
-        
+        digitModel = YoloModel("./cfg/spark-digits-yolov3-tiny.cfg", "weights/spark-digits-yolov3-tiny_best.weights", "./cfg/spark-digits.data")
+        results = digitModel.detect(filename, 0.25, False, False)
+
         predictions = list(map(lambda o: Prediction(
             o[0].decode('utf-8'), 
             o[1],

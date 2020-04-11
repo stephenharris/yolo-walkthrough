@@ -190,7 +190,7 @@ Either locally in your container or on the EC2 instance run
 
     python test_counter_detection.py /path/to/dataset/ /path/to/output/
 
-This will find any images in the folder and apply the model (you may need to change the arugments passed to `performDetect`). It will then generate the following images:
+This will find any images in the folder and apply the model (you may need to change the arugments passed to `YoloModel`). It will then generate the following images:
 
  - `{filename}-prediction.jpg` - the meter image with a bounding box drawn around the predicted counter region (incase of multiple predictions, the one with the highest confidence score is shown)
  - `{filename}-scaled-crop.jpg` - bounding box is scaled up by 20% and the image cropped to that region
@@ -220,7 +220,7 @@ Configuration follows as before, with the following changes:
 
     python test_digit_detection.py /path/to/dataset/
 
-This will apply your trained model (again you'll need to configure the parameters passed to `performDetect`) and print out the image filename, the actual reading (according to the annotations) and the predicted value. The last line will print a number between 0 and 1, indicating the percentage of reading correctly extracted.
+This will apply your trained model (again you'll need to configure the parameters passed to `YoloModel`) and print out the image filename, the actual reading (according to the annotations) and the predicted value. The last line will print a number between 0 and 1, indicating the percentage of reading correctly extracted.
 
 
 ## Resources

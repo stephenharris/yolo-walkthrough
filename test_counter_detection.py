@@ -33,16 +33,9 @@ if __name__ == '__main__':
         print(filename)
         base = os.path.basename(os.path.splitext(filename)[0])
 
-        results = performDetect(
-            filename, 
-            0.25, 
-            "./cfg/spark-counter-yolov3-tiny.cfg", 
-            "weights/spark-counter-yolov3-tiny_best.weights", 
-            "./cfg/spark-counter.data", 
-            True, 
-            True, 
-            False
-        )
+        model = YoloModel("./cfg/spark-counter-yolov3-tiny.cfg", "weights/spark-counter-yolov3-tiny_best.weights", "./cfg/spark-counter.data");
+
+        results = model.detect(filename, 0.25, True, True)
 
         predictions = list(map(lambda o: Prediction(
             o[0].decode('utf-8'), 

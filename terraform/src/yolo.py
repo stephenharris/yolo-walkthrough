@@ -52,7 +52,9 @@ def handler(event, context):
 
         try:
             downloadFromS3(DATA_SOURCE_BUCKET, 'spark-counter-yolov3-tiny_best.weights', '/tmp/spark-counter-yolov3-tiny_best.weights')
-            results = performDetect('/tmp/original.jpg', 0.25, "./cfg/spark-counter-yolov3-tiny.cfg", "/tmp/spark-counter-yolov3-tiny_best.weights", "./cfg/counter.data", False, False, False, True)
+            
+            counterModel = YoloModel("./cfg/spark-counter-yolov3-tiny.cfg", "/tmp/spark-counter-yolov3-tiny_best.weights", "./cfg/counter.data")
+            results = counterModel.detect('/tmp/original.jpg', 0.25, False, False)
             
             counterPredictions = list(map(lambda o: Prediction(
                 o[0].decode('utf-8'), 
@@ -104,7 +106,10 @@ def handler(event, context):
 
         try:
             downloadFromS3(DATA_SOURCE_BUCKET, 'spark-digits-yolov3-tiny_best.weights', '/tmp/spark-digits-yolov3-tiny_best.weights')
-            results = performDetect('/tmp/scaled-cropped.jpg', 0.25, "./cfg/spark-digits-yolov3-tiny.cfg", "/tmp/spark-digits-yolov3-tiny_best.weights", "./cfg/digits.data", False, False, False, True)
+
+            digitModel = YoloModel("./cfg/spark-digits-yolov3-tiny.cfg", "/tmp/spark-digits-yolov3-tiny_best.weights", "./cfg/digits.data")
+            results = digitModel.detect('/tmp/scaled-cropped.jpg', 0.25, False, False)
+            
             originalPredictions = list(map(lambda o: Prediction(
                 o[0].decode('utf-8'), 
                 o[1],

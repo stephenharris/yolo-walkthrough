@@ -13,9 +13,12 @@ On a GPU system, you can force CPU evaluation by any of:
 - Set environment variable "FORCE_CPU" to "true"
 
 
-To use, either run performDetect() after import, or modify the end of this file.
+To use.
 
-See the docstring of performDetect() for parameters.
+    model = YoloModel("/path/to/confg.cfg", "/path/to/weights.weights", "/path/to/meta.data")
+    results = model.detect('/path/to/image.jpg', 0.25, False, False)
+
+See the docstring of YoloModel() for parameters.
 
 Directly viewing or returning bounding-boxed images requires scikit-image to be installed (`pip install scikit-image`)
 
@@ -31,21 +34,6 @@ from ctypes import *
 import math
 import random
 import os
-
-def sample(probs):
-    s = sum(probs)
-    probs = [a/s for a in probs]
-    r = random.uniform(0, 1)
-    for i in range(len(probs)):
-        r = r - probs[i]
-        if r <= 0:
-            return i
-    return len(probs)-1
-
-def c_array(ctype, values):
-    arr = (ctype*len(values))()
-    arr[:] = values
-    return arr
 
 class BOX(Structure):
     _fields_ = [("x", c_float),
@@ -130,12 +118,6 @@ lib.network_height.restype = c_int
 copy_image_from_bytes = lib.copy_image_from_bytes
 copy_image_from_bytes.argtypes = [IMAGE,c_char_p]
 
-def network_width(net):
-    return lib.network_width(net)
-
-def network_height(net):
-    return lib.network_height(net)
-
 predict = lib.network_predict_ptr
 predict.argtypes = [c_void_p, POINTER(c_float)]
 predict.restype = POINTER(c_float)
@@ -210,99 +192,46 @@ predict_image_letterbox = lib.network_predict_image_letterbox
 predict_image_letterbox.argtypes = [c_void_p, IMAGE]
 predict_image_letterbox.restype = POINTER(c_float)
 
-def array_to_image(arr):
-    import numpy as np
-    # need to return old values to avoid python freeing memory
-    arr = arr.transpose(2,0,1)
-    c = arr.shape[0]
-    h = arr.shape[1]
-    w = arr.shape[2]
-    arr = np.ascontiguousarray(arr.flat, dtype=np.float32) / 255.0
-    data = arr.ctypes.data_as(POINTER(c_float))
-    im = IMAGE(w,h,c,data)
-    return im, arr
+class YoloModel:
 
-def classify(net, meta, im):
-    out = predict_image(net, im)
-    res = []
-    for i in range(meta.classes):
-        if altNames is None:
-            nameTag = meta.names[i]
-        else:
-            nameTag = altNames[i]
-        res.append((nameTag, out[i]))
-    res = sorted(res, key=lambda x: -x[1])
-    return res
+    def __init__(self, configPath = "./cfg/yolov3.cfg", weightPath = "yolov3.weights", metaPath= "./cfg/coco.data"):
+        
+        if not os.path.exists(configPath):
+            raise ValueError("Invalid config path `"+os.path.abspath(configPath)+"`")
+        if not os.path.exists(weightPath):
+            raise ValueError("Invalid weight path `"+os.path.abspath(weightPath)+"`")
+        if not os.path.exists(metaPath):
+            raise ValueError("Invalid data file path `"+os.path.abspath(metaPath)+"`")
+        
+        self.netMain = load_net_custom(configPath.encode("ascii"), weightPath.encode("ascii"), 0, 1)  # batch size = 1
+        self.metaMain = load_meta(metaPath.encode("ascii"))
+        self.altNames = None
+        self.debug = False
 
-def detect(net, meta, image, thresh=.5, hier_thresh=.5, nms=.45, debug= False):
-    """
-    Performs the meat of the detection
-    """
-    #pylint: disable= C0321
-    im = load_image(image, 0, 0)
-    if debug: print("Loaded image")
-    ret = detect_image(net, meta, im, thresh, hier_thresh, nms, debug)
-    free_image(im)
-    if debug: print("freed image")
-    return ret
-
-def detect_image(net, meta, im, thresh=.5, hier_thresh=.5, nms=.45, debug= False):
-    #import cv2
-    #custom_image_bgr = cv2.imread(image) # use: detect(,,imagePath,)
-    #custom_image = cv2.cvtColor(custom_image_bgr, cv2.COLOR_BGR2RGB)
-    #custom_image = cv2.resize(custom_image,(lib.network_width(net), lib.network_height(net)), interpolation = cv2.INTER_LINEAR)
-    #import scipy.misc
-    #custom_image = scipy.misc.imread(image)
-    #im, arr = array_to_image(custom_image)		# you should comment line below: free_image(im)
-    num = c_int(0)
-    if debug: print("Assigned num")
-    pnum = pointer(num)
-    if debug: print("Assigned pnum")
-    predict_image(net, im)
-    letter_box = 0
-    #predict_image_letterbox(net, im)
-    #letter_box = 1
-    if debug: print("did prediction")
-    #dets = get_network_boxes(net, custom_image_bgr.shape[1], custom_image_bgr.shape[0], thresh, hier_thresh, None, 0, pnum, letter_box) # OpenCV
-    dets = get_network_boxes(net, im.w, im.h, thresh, hier_thresh, None, 0, pnum, letter_box)
-    if debug: print("Got dets")
-    num = pnum[0]
-    if debug: print("got zeroth index of pnum")
-    if nms:
-        do_nms_sort(dets, num, meta.classes, nms)
-    if debug: print("did sort")
-    res = []
-    if debug: print("about to range")
-    for j in range(num):
-        if debug: print("Ranging on "+str(j)+" of "+str(num))
-        if debug: print("Classes: "+str(meta), meta.classes, meta.names)
-        for i in range(meta.classes):
-            if debug: print("Class-ranging on "+str(i)+" of "+str(meta.classes)+"= "+str(dets[j].prob[i]))
-            if dets[j].prob[i] > 0:
-                b = dets[j].bbox
-                if altNames is None:
-                    nameTag = meta.names[i]
+        # In Python 3, the metafile default access craps out on Windows (but not Linux)
+        # Read the names file and create a list to feed to detect
+        try:
+            with open(metaPath) as metaFH:
+                metaContents = metaFH.read()
+                import re
+                match = re.search("names *= *(.*)$", metaContents, re.IGNORECASE | re.MULTILINE)
+                if match:
+                    result = match.group(1)
                 else:
-                    nameTag = altNames[i]
-                if debug:
-                    print("Got bbox", b)
-                    print(nameTag)
-                    print(dets[j].prob[i])
-                    print((b.x, b.y, b.w, b.h))
-                res.append((nameTag, dets[j].prob[i], (b.x, b.y, b.w, b.h)))
-    if debug: print("did range")
-    res = sorted(res, key=lambda x: -x[1])
-    if debug: print("did sort")
-    free_detections(dets, num)
-    if debug: print("freed detections")
-    return res
+                    result = None
+                try:
+                    if os.path.exists(result):
+                        with open(result) as namesFH:
+                            namesList = namesFH.read().strip().split("\n")
+                            self.altNames = [x.strip() for x in namesList]
+                except TypeError:
+                    pass
+        except Exception:
+            pass
 
+    def setDebug(self, debug):
+        self.debug = debug
 
-netMain = None
-metaMain = None
-altNames = None
-
-def performDetect(imagePath="data/dog.jpg", thresh= 0.25, configPath = "./cfg/yolov3.cfg", weightPath = "yolov3.weights", metaPath= "./cfg/coco.data", showImage= True, makeImageOnly = False, initOnly= False, resetInit = False):
     """
     Convenience function to handle the detection and returns of objects.
 
@@ -316,23 +245,11 @@ def performDetect(imagePath="data/dog.jpg", thresh= 0.25, configPath = "./cfg/yo
     thresh: float (default= 0.25)
         The detection threshold
 
-    configPath: str
-        Path to the configuration file. Raises ValueError if not found
-
-    weightPath: str
-        Path to the weights file. Raises ValueError if not found
-
-    metaPath: str
-        Path to the data file. Raises ValueError if not found
-
     showImage: bool (default= True)
         Compute (and show) bounding boxes. Changes return.
 
     makeImageOnly: bool (default= False)
         If showImage is True, this won't actually *show* the image, but will create the array and return it.
-
-    initOnly: bool (default= False)
-        Only initialize globals. Don't actually run a prediction.
 
     Returns
     ----------------------
@@ -349,107 +266,115 @@ def performDetect(imagePath="data/dog.jpg", thresh= 0.25, configPath = "./cfg/yo
             "caption": an image caption
         }
     """
-    # Import the global variables. This lets us instance Darknet once, then just call performDetect() again without instancing again
-    global metaMain, netMain, altNames #pylint: disable=W0603
+    def detect(self, imagePath="data/dog.jpg", thresh= 0.25, showImage= True, makeImageOnly = False):
+        
+        if not os.path.exists(imagePath):
+            raise ValueError("Invalid image path `"+os.path.abspath(imagePath)+"`")
 
-    if resetInit:
-        netMain = None
-        metaMain = None
-        altNames = None
+        assert 0 < thresh < 1, "Threshold should be a float between zero and one (non-inclusive)"
+        
+        im = load_image(imagePath.encode("ascii"), 0, 0)
+        detections = self._detect_image(im, thresh, .5, .45)
+        free_image(im)
+        
+        if showImage:
+            try:
+                from skimage import io, draw
+                import numpy as np
+                image = io.imread(imagePath)
+                print("*** "+str(len(detections))+" Results, color coded by confidence ***")
+                imcaption = []
+                for detection in detections:
+                    label = detection[0]
+                    confidence = detection[1]
+                    #pstring = label+": "+str(np.rint(100 * confidence))+"%"
+                    #imcaption.append(pstring)
+                    #print(pstring)
+                    bounds = detection[2]
+                    shape = image.shape
+                    # x = shape[1]
+                    # xExtent = int(x * bounds[2] / 100)
+                    # y = shape[0]
+                    # yExtent = int(y * bounds[3] / 100)
+                    yExtent = int(bounds[3])
+                    xEntent = int(bounds[2])
+                    # Coordinates are around the center
+                    xCoord = int(bounds[0] - bounds[2]/2)
+                    yCoord = int(bounds[1] - bounds[3]/2)
+                    boundingBox = [
+                        [xCoord, yCoord],
+                        [xCoord, yCoord + yExtent],
+                        [xCoord + xEntent, yCoord + yExtent],
+                        [xCoord + xEntent, yCoord]
+                    ]
+                    # Wiggle it around to make a 3px border
+                    rr, cc = draw.polygon_perimeter([x[1] for x in boundingBox], [x[0] for x in boundingBox], shape= shape)
+                    rr2, cc2 = draw.polygon_perimeter([x[1] + 1 for x in boundingBox], [x[0] for x in boundingBox], shape= shape)
+                    rr3, cc3 = draw.polygon_perimeter([x[1] - 1 for x in boundingBox], [x[0] for x in boundingBox], shape= shape)
+                    rr4, cc4 = draw.polygon_perimeter([x[1] for x in boundingBox], [x[0] + 1 for x in boundingBox], shape= shape)
+                    rr5, cc5 = draw.polygon_perimeter([x[1] for x in boundingBox], [x[0] - 1 for x in boundingBox], shape= shape)
+                    boxColor = (int(255 * (1 - (confidence ** 2))), int(255 * (confidence ** 2)), 0)
+                    draw.set_color(image, (rr, cc), boxColor, alpha= 0.8)
+                    draw.set_color(image, (rr2, cc2), boxColor, alpha= 0.8)
+                    draw.set_color(image, (rr3, cc3), boxColor, alpha= 0.8)
+                    draw.set_color(image, (rr4, cc4), boxColor, alpha= 0.8)
+                    draw.set_color(image, (rr5, cc5), boxColor, alpha= 0.8)
+                
+                if not makeImageOnly:
+                    io.imshow(image)
+                    io.show()
+                
+                detections = {
+                    "detections": detections,
+                    "image": image,
+                    "caption": "\n<br/>".join(imcaption)
+                }
+            except Exception as e:
+                print("Unable to show image: "+str(e))
+        
+        return detections
 
-    assert 0 < thresh < 1, "Threshold should be a float between zero and one (non-inclusive)"
-    if not os.path.exists(configPath):
-        raise ValueError("Invalid config path `"+os.path.abspath(configPath)+"`")
-    if not os.path.exists(weightPath):
-        raise ValueError("Invalid weight path `"+os.path.abspath(weightPath)+"`")
-    if not os.path.exists(metaPath):
-        raise ValueError("Invalid data file path `"+os.path.abspath(metaPath)+"`")
-    if netMain is None:
-        netMain = load_net_custom(configPath.encode("ascii"), weightPath.encode("ascii"), 0, 1)  # batch size = 1
-    if metaMain is None:
-        metaMain = load_meta(metaPath.encode("ascii"))
-    if altNames is None:
-        # In Python 3, the metafile default access craps out on Windows (but not Linux)
-        # Read the names file and create a list to feed to detect
-        try:
-            with open(metaPath) as metaFH:
-                metaContents = metaFH.read()
-                import re
-                match = re.search("names *= *(.*)$", metaContents, re.IGNORECASE | re.MULTILINE)
-                if match:
-                    result = match.group(1)
-                else:
-                    result = None
-                try:
-                    if os.path.exists(result):
-                        with open(result) as namesFH:
-                            namesList = namesFH.read().strip().split("\n")
-                            altNames = [x.strip() for x in namesList]
-                except TypeError:
-                    pass
-        except Exception:
-            pass
-    if initOnly:
-        print("Initialized detector")
-        return None
-    if not os.path.exists(imagePath):
-        raise ValueError("Invalid image path `"+os.path.abspath(imagePath)+"`")
-    # Do the detection
-    #detections = detect(netMain, metaMain, imagePath, thresh)	# if is used cv2.imread(image)
-    detections = detect(netMain, metaMain, imagePath.encode("ascii"), thresh)
-    if showImage:
-        try:
-            from skimage import io, draw
-            import numpy as np
-            image = io.imread(imagePath)
-            print("*** "+str(len(detections))+" Results, color coded by confidence ***")
-            imcaption = []
-            for detection in detections:
-                label = detection[0]
-                confidence = detection[1]
-                pstring = label+": "+str(np.rint(100 * confidence))+"%"
-                imcaption.append(pstring)
-                print(pstring)
-                bounds = detection[2]
-                shape = image.shape
-                # x = shape[1]
-                # xExtent = int(x * bounds[2] / 100)
-                # y = shape[0]
-                # yExtent = int(y * bounds[3] / 100)
-                yExtent = int(bounds[3])
-                xEntent = int(bounds[2])
-                # Coordinates are around the center
-                xCoord = int(bounds[0] - bounds[2]/2)
-                yCoord = int(bounds[1] - bounds[3]/2)
-                boundingBox = [
-                    [xCoord, yCoord],
-                    [xCoord, yCoord + yExtent],
-                    [xCoord + xEntent, yCoord + yExtent],
-                    [xCoord + xEntent, yCoord]
-                ]
-                # Wiggle it around to make a 3px border
-                rr, cc = draw.polygon_perimeter([x[1] for x in boundingBox], [x[0] for x in boundingBox], shape= shape)
-                rr2, cc2 = draw.polygon_perimeter([x[1] + 1 for x in boundingBox], [x[0] for x in boundingBox], shape= shape)
-                rr3, cc3 = draw.polygon_perimeter([x[1] - 1 for x in boundingBox], [x[0] for x in boundingBox], shape= shape)
-                rr4, cc4 = draw.polygon_perimeter([x[1] for x in boundingBox], [x[0] + 1 for x in boundingBox], shape= shape)
-                rr5, cc5 = draw.polygon_perimeter([x[1] for x in boundingBox], [x[0] - 1 for x in boundingBox], shape= shape)
-                boxColor = (int(255 * (1 - (confidence ** 2))), int(255 * (confidence ** 2)), 0)
-                draw.set_color(image, (rr, cc), boxColor, alpha= 0.8)
-                draw.set_color(image, (rr2, cc2), boxColor, alpha= 0.8)
-                draw.set_color(image, (rr3, cc3), boxColor, alpha= 0.8)
-                draw.set_color(image, (rr4, cc4), boxColor, alpha= 0.8)
-                draw.set_color(image, (rr5, cc5), boxColor, alpha= 0.8)
-            if not makeImageOnly:
-                io.imshow(image)
-                io.show()
-            detections = {
-                "detections": detections,
-                "image": image,
-                "caption": "\n<br/>".join(imcaption)
-            }
-        except Exception as e:
-            print("Unable to show image: "+str(e))
-    return detections
 
-if __name__ == "__main__":
-    print(performDetect())
+    def _detect_image(self, im, thresh=.5, hier_thresh=.5, nms=.45):
+        num = c_int(0)
+        if self.debug: print("Assigned num")
+        pnum = pointer(num)
+        if self.debug: print("Assigned pnum")
+        predict_image(self.netMain, im)
+        letter_box = 0
+        #predict_image_letterbox(net, im)
+        #letter_box = 1
+        if self.debug: print("did prediction")
+        #dets = get_network_boxes(net, custom_image_bgr.shape[1], custom_image_bgr.shape[0], thresh, hier_thresh, None, 0, pnum, letter_box) # OpenCV
+        dets = get_network_boxes(self.netMain, im.w, im.h, thresh, hier_thresh, None, 0, pnum, letter_box)
+        if self.debug: print("Got dets")
+        num = pnum[0]
+        if self.debug: print("got zeroth index of pnum")
+        if nms:
+            do_nms_sort(dets, num, self.metaMain.classes, nms)
+        if self.debug: print("did sort")
+        res = []
+        if self.debug: print("about to range")
+        for j in range(num):
+            if self.debug: print("Ranging on "+str(j)+" of "+str(num))
+            if self.debug: print("Classes: "+str(self.metaMain), self.metaMain.classes, self.metaMain.names)
+            for i in range(self.metaMain.classes):
+                if self.debug: print("Class-ranging on "+str(i)+" of "+str(self.metaMain.classes)+"= "+str(dets[j].prob[i]))
+                if dets[j].prob[i] > 0:
+                    b = dets[j].bbox
+                    if self.altNames is None:
+                        nameTag = self.metaMain.names[i]
+                    else:
+                        nameTag = self.altNames[i]
+                    if self.debug:
+                        print("Got bbox", b)
+                        print(nameTag)
+                        print(dets[j].prob[i])
+                        print((b.x, b.y, b.w, b.h))
+                    res.append((nameTag, dets[j].prob[i], (b.x, b.y, b.w, b.h)))
+        if self.debug: print("did range")
+        res = sorted(res, key=lambda x: -x[1])
+        if self.debug: print("did sort")
+        free_detections(dets, num)
+        if self.debug: print("freed detections")
+        return res
