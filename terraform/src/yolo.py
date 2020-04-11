@@ -67,7 +67,7 @@ def handler(event, context):
             
 
             if(len(counterPredictions) == 0) :
-                print("no predictions found");
+                print('Prediction failed')
                 return response({
                     'error': "Counter not found",
                     'detections': [],
@@ -97,7 +97,7 @@ def handler(event, context):
 
 
         except subprocess.CalledProcessError as e:
-            print('Error finding counter =============>')
+            print('Prediction failed')
             print(e.output)
 
         # Now we have found the counter, and cropped it, find digits in the counter region
@@ -140,6 +140,11 @@ def handler(event, context):
                         prediction.height
                     )
                 )
+
+            if (reading == predictedReading):
+                print('Prediction successful')
+            else:
+                print('Prediction failed')
             
             return response({
                 'digits': shiftedPredictions,
@@ -148,11 +153,11 @@ def handler(event, context):
             })
 
         except subprocess.CalledProcessError as e:
-            print('Error=============>')
+            print('Prediction failed')
             print(e.output)
 
     except Exception as e:
-        print('Error -------------------->e')
+        print('Prediction failed')
         print(e)
         raise e
     return 0 
