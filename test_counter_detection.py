@@ -38,7 +38,7 @@ if __name__ == '__main__':
             0.25, 
             "./cfg/spark-counter-yolov3-tiny.cfg", 
             "weights/spark-counter-yolov3-tiny_best.weights", 
-            "./cfg/counter.data", 
+            "./cfg/spark-counter.data", 
             True, 
             True, 
             False

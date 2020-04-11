@@ -188,7 +188,7 @@ Your meter images are already split into training, testing and validation. The n
 
 Either locally in your container or on the EC2 instance run
 
-    python test_counter_detection.py /path/to/dataset/
+    python test_counter_detection.py /path/to/dataset/ /path/to/output/
 
 This will find any images in the folder and apply the model (you may need to change the arugments passed to `performDetect`). It will then generate the following images:
 
@@ -213,6 +213,14 @@ Configuration follows as before, with the following changes:
  - Set `classes` to 10 in data file and update path to files listed (see `cfg/spark-digits.data`).
 
  - Generate a new set of anchors for your new data set
+
+
+#### Testing your trained model
+
+
+    python test_digit_detection.py /path/to/dataset/
+
+This will apply your trained model (again you'll need to configure the parameters passed to `performDetect`) and print out the image filename, the actual reading (according to the annotations) and the predicted value. The last line will print a number between 0 and 1, indicating the percentage of reading correctly extracted.
 
 
 ## Resources

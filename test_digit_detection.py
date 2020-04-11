@@ -29,9 +29,6 @@ if __name__ == '__main__':
     folder = folder.rstrip('/') + '/'
     images = glob.glob( folder + "*.jpg")
 
-    #images = images[:10]
-    results_file = open("tmp-spark-digits-results-poc-proj-0-15-best-weights.txt", "w")
-
     matches = 0
     total = 0
 
@@ -66,10 +63,6 @@ if __name__ == '__main__':
         total =  total + 1
         
         print('%s %s %s' %(filename, actual, predictedReading))
-        results_file.write('%s %s %s\n' %(filename, actual, predictedReading))
 
-    
     print(matches/total)
-    results_file.write("\n" + str(100*matches/total))
-    results_file.close()
 
