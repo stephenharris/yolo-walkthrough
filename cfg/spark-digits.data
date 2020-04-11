@@ -1,5 +1,5 @@
 classes=10
 train  = /home/ec2-user/train.txt  
 valid  = /home/ec2-user/test.txt  
-names = /home/ec2-user/cfg/spark-digits.names  
+names = ./cfg/spark-digits.names  
 backup = /home/ec2-user/backup
