@@ -58,9 +58,9 @@ label {
     font-weight:bold;
 }
 #preview {
-    margin-top: 1em;
+    margin-top: 1rem;
     width: 100%;
-    border: 1px solid #2874de;
+    border: .1rem solid #ccc
 }
 
 .thumbnail {
@@ -71,7 +71,7 @@ label {
   display: inline-block;
   margin: 10px;
 }
-.thumbnail img {
+.thumbnail__img {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -105,4 +105,58 @@ label {
     to {
      transform:rotate(1turn)
     }
+}
+.toaster{
+    visibility: hidden;
+    font-size:1.1rem;
+    text-align: center;
+    box-shadow:  1px 1px 5px 0 rgba(20,63,83,.35);
+    padding: 1.5rem 0.75rem;
+    position: fixed;
+    z-index: 999;
+    left: 25%;
+    width: 50%;
+    right: 50%;
+    bottom: 3rem;
+    font-size: 17px;
+}
+
+
+.toaster--info{
+    background-color: #333;
+    color:white;
+}
+
+.toaster--success{
+    background-color: #b1eba8;;
+}
+
+.toaster--error{
+    background-color: #edadad;
+}
+
+.toaster--show {
+    visibility: visible;
+    -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
+    animation: fadein 0.5s, fadeout 0.5s 2.5s;
+}
+  
+@-webkit-keyframes fadein {
+    from {bottom: 0; opacity: 0;} 
+    to {bottom: 3rem; opacity: 1;}
+}
+  
+@keyframes fadein {
+    from {bottom: 0; opacity: 0;}
+    to {bottom: 3rem; opacity: 1;}
+}
+  
+@-webkit-keyframes fadeout {
+    from {bottom: 30px; opacity: 1;} 
+    to {bottom: 0; opacity: 0;}
+}
+  
+@keyframes fadeout {
+    from {bottom: 30px; opacity: 1;}
+    to {bottom: 0; opacity: 0;}
 }

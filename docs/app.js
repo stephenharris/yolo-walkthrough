@@ -61,7 +61,9 @@ var app = new Vue({
       groundTruthReading: '',
       error: '',
       prediction: '',
-      preview: new ImagePreview('preview')
+      preview: new ImagePreview('preview'),
+      toasterMessage: null,
+      toasterStyle: "info",
     },
     methods: {
         showImage: function(event) {
@@ -117,13 +119,36 @@ var app = new Vue({
                     this.loading = false;
                     this.preview.drawBoundingBoxes(data['digits'])
                     this.prediction = data['predictedReading'];
+
+                    if (this.prediction == this.groundTruthReading) {
+                        this.showSuccess("Prediction correct");
+                    } else {
+                        this.showError("Prediction incorrect");
+                    }
                 })
                 .catch((error) => {
                     this.loading = false;
+
+                    this.showError('API returned an error');
+
                     console.error('Error:', error);
                 });
             }
             reader.readAsBinaryString(file)
+        },
+        showSuccess: function(message) {
+            this._showToaster(message, 'success');
+        },
+
+        showError: function(message) {
+            this._showToaster(message, 'error');
+        },
+        _showToaster: function(message, style = 'info', timeout=3000) {
+            this.toasterMessage = message;
+            this.toasterStyle = style;
+            setTimeout(() => { 
+                this.toasterMessage = null; 
+            }, timeout);
         }
     }
 });

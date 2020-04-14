@@ -31,9 +31,9 @@
             <div class="row">
                 <label for="evidence">Meter image</label>
                 <input type="file"  @change="showImage"  id="evidence"/>
-                <img id="previewx" src=""/>
+                <img  class="thumbnail__img" src=""/>
                 <canvas id="preview"></canvas>
-                <p v-if="prediction" id="prediction">Predicted value: <strong>{{ prediction }}</strong></p>
+                <p v-if="prediction">Predicted value: <strong>{{ prediction }}</strong></p>
             </div>
 
             <div class="row"> 
@@ -60,6 +60,7 @@
                 </div>
             </div>
         </form>
+        <div :class="{'toaster': true, ['toaster--' + toasterStyle]: true, 'toaster--show': toasterMessage}">{{toasterMessage}}</div>
     </div>
     <script src="app.js"></script>
 </body>
